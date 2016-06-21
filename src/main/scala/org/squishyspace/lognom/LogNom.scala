@@ -9,7 +9,7 @@ import org.apache.spark.{SparkContext, SparkConf}
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.apache.spark.storage.StorageLevel
 import _root_.com.redislabs.provider.redis._
-import org.json4s._
+import org.elasticsearch.spark._
 import org.json4s.native.JsonMethods._
 
 object LogNom {
@@ -32,6 +32,9 @@ object LogNom {
 
       // optional redis AUTH password
       //.set("redis.auth", "")
+
+      .set("es.index.auto.create", "true")
+      .set("es.nodes", "elasticsearch:9200")
     )
 
     // creates a sliding window of n seconds for the stream
@@ -45,6 +48,14 @@ object LogNom {
     // this will create a wicked fast stream BLPOPing off the redis lists provided
     val logStream = ssc.createRedisStreamWithoutListname(Array(stage1_name),
       storageLevel = StorageLevel.MEMORY_AND_DISK) // only uses disk if necessary
+
+    //////// Processing begins here /////////
+
+    // access elasticsearch index as an RDD
+    val es_data = sc.esRDD("logstash-%s".
+      format(new java.text.SimpleDateFormat("YYYY-MM-dd").toString))
+
+    es_data.take(5).foreach(println)
 
     // stage 1 example filtering and conversion
     val stage1 = logStream
@@ -67,6 +78,8 @@ object LogNom {
         sc.toRedisFixedLIST(rdd, stage2_name, 50000)
       }
     })
+
+    //////// Processing ends here ////////
 
     ssc.start()
     ssc.awaitTermination()
