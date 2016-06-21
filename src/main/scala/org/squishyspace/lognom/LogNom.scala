@@ -26,10 +26,8 @@ object LogNom {
 
       // initial redis host - can be any node in cluster mode
       .set("redis.host", "172.17.0.2")
-
       // initial redis port
       .set("redis.port", "6379")
-
       // optional redis AUTH password
       //.set("redis.auth", "")
 
